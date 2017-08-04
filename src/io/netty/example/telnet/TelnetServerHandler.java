@@ -17,7 +17,7 @@ public class TelnetServerHandler extends SimpleChannelInboundHandler<String>{
 	             ctx.write("It is " + new Date() + " now.\r\n");
 	             ctx.flush();
 	         }
-	     
+	     //test branch
 	         @Override
 	         public void channelRead0(ChannelHandlerContext ctx, String request) throws Exception {
 	             // Generate and write a response.
