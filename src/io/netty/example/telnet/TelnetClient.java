@@ -11,12 +11,13 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory; 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-
+//test
 public class TelnetClient {
 	static final boolean SSL = System.getProperty("ssl") != null;
 	      static final String HOST = System.getProperty("host", "192.168.1.137");
 	      static final int PORT = Integer.parseInt(System.getProperty("port", SSL? "8992" : "8023"));
 	public static void main(String[] args) throws Exception{
+		 
 		 // Configure SSL.
 		          final SslContext sslCtx;
 		          if (SSL) {
