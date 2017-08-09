@@ -1,0 +1,3 @@
+GET /				io.netty.example.http.controller.IndexControllerImpl
+GET	/favicon.ico	io.netty.example.http.controller.FaviconControllerImpl
+*	/add			io.netty.example.http.controller.AdditionControllerImpl

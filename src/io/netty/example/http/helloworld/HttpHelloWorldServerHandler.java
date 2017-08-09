@@ -1,22 +1,40 @@
 package io.netty.example.http.helloworld;
 
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpUtil;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.util.AsciiString;
-import static io.netty.handler.codec.http.HttpResponseStatus.*;
-import static io.netty.handler.codec.http.HttpVersion.*;
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
+import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.example.http.controller.IController;
+import io.netty.example.http.response.ResponseUtil;
+import io.netty.example.http.route.Route;
+import io.netty.example.http.route.RouteInfo;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.multipart.DefaultHttpDataFactory;
+import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
+import io.netty.handler.codec.http.multipart.InterfaceHttpData;
+import io.netty.handler.codec.http.multipart.InterfaceHttpData.HttpDataType;
+import io.netty.handler.codec.http.multipart.MemoryAttribute;
+import io.netty.util.AsciiString;
 
 public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 	// private static final byte[] CONTENT = { 'H', 'e', 'l', 'l', 'o', ' ',
@@ -59,23 +77,35 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
 		if (msg instanceof HttpRequest) {
-			HttpRequest req = (HttpRequest) msg;
-			String filePath = "html/test.html";
-			final byte[] CONTENT = getBytes(filePath);
-			/*
-			 * public static boolean isKeepAlive(HttpMessage message) Returns
-			 * true if and only if the connection can remain open and thus 'kept
-			 * alive'. This methods respects the value of the. "Connection"
-			 * header first and then the return value of
-			 * HttpVersion.isKeepAliveDefault().
-			 */
-			boolean keepAlive = HttpUtil.isKeepAlive(req);
-			// DefaultFullHttpResponse(HttpVersion version, HttpResponseStatus
-			// status, ByteBuf content)
-			FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(CONTENT));
-			response.headers().set(CONTENT_TYPE, "text/html");
-			response.headers().setInt(CONTENT_LENGTH, response.content().readableBytes());
-
+			
+			HttpRequest req = (HttpRequest) msg;			
+			//获取URL参数
+			Map<String, String> params = requestParams(req);
+			
+			//处理URI 获取path路径
+			QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
+			String path = decoder.path();
+			
+			//获取路由信息
+			RouteInfo ri = Route.getInstance().getByUri(path);
+			
+			FullHttpResponse response = null; 
+			//处理路由
+			if( ri == null ){
+				response = ResponseUtil.responseServerError("路由不存在"); 
+			}else if( !ri.getMethod().equalsIgnoreCase(req.method().name())  && !ri.getMethod().equals("*")){
+				response = ResponseUtil.responseServerError("不支持Method："+req.method().name()); 
+			}else{//处理正常业务
+				try {
+					//为什么这么做呢？ 解耦业务
+					IController ctr = (IController)(Class.forName(ri.getClz()).newInstance());
+					response = ctr.doCtr(params);
+				} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+					response = ResponseUtil.responseServerError("未找到路由实现"); 
+				}
+			}
+  
+			boolean keepAlive = HttpUtil.isKeepAlive(req); 
 			if (!keepAlive) {
 				ctx.write(response).addListener(ChannelFutureListener.CLOSE);
 			} else {
@@ -89,5 +119,32 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
 		cause.printStackTrace();
 		ctx.close();
+	}
+	
+	private Map<String, String> requestParams(HttpRequest req){
+		String uri = req.uri();
+		Map<String, String> requestParams = new HashMap<>();
+		// 处理get请求
+		if (req.method() == HttpMethod.GET) {
+			QueryStringDecoder decoder = new QueryStringDecoder(uri);
+			Map<String, List<String>> parame = decoder.parameters();
+			Iterator<Entry<String, List<String>>> iterator = parame.entrySet().iterator();
+			while (iterator.hasNext()) {
+				Entry<String, List<String>> next = iterator.next();
+				requestParams.put(next.getKey(), next.getValue().get(0));
+			}
+		}
+		// 处理POST请求
+		if (req.method() == HttpMethod.POST) {
+			HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(new DefaultHttpDataFactory(false), req);
+			List<InterfaceHttpData> postData = decoder.getBodyHttpDatas(); //
+			for (InterfaceHttpData data : postData) {
+				if (data.getHttpDataType() == HttpDataType.Attribute) {
+					MemoryAttribute attribute = (MemoryAttribute) data;
+					requestParams.put(attribute.getName(), attribute.getValue());
+				}
+			}
+		} 
+		return requestParams;
 	}
 }

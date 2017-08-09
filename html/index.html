@@ -1,0 +1,33 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+   <title>这是一个简易计算器</title>
+</head>
+<body style="text-align:center;"> 
+  <input id="firstNumber" type="text" style="width:150px;" placeholder="请输入数字"/>
+  <select id="operator" style="width:80px;">
+  	  <option value ="0">+</option>
+	  <option value ="1">-</option>
+	  <option value="2">*</option>
+	  <option value="3">/</option>
+  </select>
+  <input id="secNumber" type="text" style="width:150px;"  placeholder="请输入数字"/>
+  <input id="cal" onclick="cal()" type="button" style="width:100px;" value="计算" />
+  <script>
+  	function cal(){
+  		var getResultUrl;
+  		var firstNumber = document.getElementById("firstNumber").value;
+  		var secNumber = document.getElementById("secNumber").value;
+  		var operator = document.getElementById("operator").value;
+  		if( operator == 0){
+  			getResultUrl = '/add?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  		}
+  		if(getResultUrl){
+  			window.location.href=getResultUrl;
+  		}else{
+  			alert('不支持计算');
+  		}
+  	}
+  </script>
+</body>
+</html>
