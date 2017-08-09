@@ -29,7 +29,7 @@ public class TelnetServerInitializer extends ChannelInitializer<SocketChannel>{
 	               pipeline.addLast(sslCtx.newHandler(ch.alloc()));
 	           }
 	  
-	           // Add the text line codec combination first,
+	           // Add the text line codec combination first,消息最大长度是8192
 	           pipeline.addLast(new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()));
 	           // the encoder and decoder are static as these are sharable
 	           pipeline.addLast(DECODER);
