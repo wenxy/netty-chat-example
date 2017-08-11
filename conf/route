@@ -4,3 +4,4 @@ GET	/favicon.ico	io.netty.example.http.controller.FaviconControllerImpl
 *   /subtract       io.netty.example.http.controller.SubtractionControllerImpl
 *   /multiple       io.netty.example.http.controller.MultiplicationControllerImpl
 *   /divide         io.netty.example.http.controller.DivisionControllerImpl
+*	/cal			io.netty.example.http.controller.CalController

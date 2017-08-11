@@ -6,7 +6,7 @@ import io.netty.example.http.response.ResponseUtil;
 import io.netty.example.http.template.FreeMarker;
 import io.netty.handler.codec.http.FullHttpResponse;
 
-public class IndexControllerImpl implements IController{
+public class IndexControllerImpl  extends AbstractController{
 
 	@Override
 	public FullHttpResponse doCtr(Map<String, String> params) {

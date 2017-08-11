@@ -20,16 +20,16 @@
   		var secNumber = document.getElementById("secNumber").value;
   		var operator = document.getElementById("operator").value;
   		if( operator == 0){
-  			getResultUrl = '/add?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  			getResultUrl = '/cal@add?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}
   		if( operator == 1){
-  			getResultUrl = '/subtract?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  			getResultUrl = '/cal@subtract?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}
   		if( operator == 2){
-  			getResultUrl = '/multiple?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  			getResultUrl = '/cal@multiple?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}
   		  		if( operator == 3){
-  			getResultUrl = '/divide?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  			getResultUrl = '/cal@divide?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}  		
   		if(getResultUrl){
   			window.location.href=getResultUrl;

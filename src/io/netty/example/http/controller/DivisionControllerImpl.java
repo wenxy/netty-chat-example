@@ -1,6 +1,5 @@
 package io.netty.example.http.controller;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import io.netty.example.http.controller.dto.SubtractionDto;
@@ -8,7 +7,7 @@ import io.netty.example.http.response.ResponseUtil;
 import io.netty.example.http.template.FreeMarker;
 import io.netty.handler.codec.http.FullHttpResponse;
 
-public class DivisionControllerImpl implements IController {
+public class DivisionControllerImpl extends AbstractController {
 
 	@Override
 	public FullHttpResponse doCtr(Map<String, String> params) {

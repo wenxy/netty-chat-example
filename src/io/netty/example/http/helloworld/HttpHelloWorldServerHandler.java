@@ -82,7 +82,8 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 			String path = decoder.path();
 			
 			//获取路由信息
-			RouteInfo ri = Route.getInstance().getByUri(path);
+			String realPath = getpath(path);
+			RouteInfo ri = Route.getInstance().getByUri(realPath);
 			
 			FullHttpResponse response = null; 
 			//处理路由
@@ -99,9 +100,13 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 			        response = (FullHttpResponse) method.invoke(CalculateController.newInstance());*/
 			       // response = clazz.AdoCtr(params);
 					
-				
 					IController ctr = (IController)(Class.forName(ri.getClz()).newInstance());
-					response = ctr.doCtr(params);
+					String method = getMethod(path);
+					if( null == method ){
+						response = ctr.doCtr(params);
+					}else{
+						response = ctr.doCtr(params, method);
+					}
 				} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
 					response = ResponseUtil.responseServerError("未找到路由实现"); 
 				}
@@ -148,5 +153,29 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 			}
 		} 
 		return requestParams;
+	}
+	
+	private String getMethod(String path){
+		if( path == null || path.length() == 0 ){
+			return null;
+		}
+		
+		int index = path.indexOf("@");
+		if( index == -1 ){
+			return null;
+		}
+		
+		return path.substring(index+1);
+	}
+	
+	private String getpath(String path){
+		if( path == null || path.length() == 0 ){
+			return null;
+		}
+		int index = path.indexOf("@");
+		if( index == -1 ){
+			return path;
+		}
+		return path.substring(0,index);
 	}
 }

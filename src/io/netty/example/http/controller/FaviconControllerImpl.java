@@ -5,7 +5,7 @@ import java.util.Map;
 import io.netty.example.http.response.ResponseUtil;
 import io.netty.handler.codec.http.FullHttpResponse;
 
-public class FaviconControllerImpl implements IController{
+public class FaviconControllerImpl  extends AbstractController{
 
 	@Override
 	public FullHttpResponse doCtr(Map<String, String> params) {
