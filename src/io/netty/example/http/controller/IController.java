@@ -6,7 +6,10 @@ import io.netty.handler.codec.http.FullHttpResponse;
 
 public interface IController {
 
+	//old
 	public FullHttpResponse doCtr(Map<String, String> params);
+	
+	public FullHttpResponse doCtr(Map<String, String> params,String method);
 
 	
 }
