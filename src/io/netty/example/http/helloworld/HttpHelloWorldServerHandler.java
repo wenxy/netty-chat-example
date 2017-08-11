@@ -1,21 +1,17 @@
 package io.netty.example.http.helloworld;
 
-import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
-import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
-import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -23,7 +19,6 @@ import io.netty.example.http.controller.IController;
 import io.netty.example.http.response.ResponseUtil;
 import io.netty.example.http.route.Route;
 import io.netty.example.http.route.RouteInfo;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
@@ -75,7 +70,7 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 	}
 
 	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) {
+	public void channelRead(ChannelHandlerContext ctx, Object msg) throws NoSuchMethodException, SecurityException, IllegalArgumentException, InvocationTargetException {
 		if (msg instanceof HttpRequest) {
 			
 			HttpRequest req = (HttpRequest) msg;			
@@ -98,6 +93,13 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 			}else{//处理正常业务
 				try {
 					//为什么这么做呢？ 解耦业务
+					/*Class<?> CalculateController = Class.forName("io.netty.example.http.controller");
+					
+			        Method method = CalculateController.getMethod("AdoCtr");
+			        response = (FullHttpResponse) method.invoke(CalculateController.newInstance());*/
+			       // response = clazz.AdoCtr(params);
+					
+				
 					IController ctr = (IController)(Class.forName(ri.getClz()).newInstance());
 					response = ctr.doCtr(params);
 				} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
@@ -121,20 +123,20 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 		ctx.close();
 	}
 	
-	private Map<String, String> requestParams(HttpRequest req){
+	private Map<String, String> requestParams(HttpRequest req){//请求参数
 		String uri = req.uri();
 		Map<String, String> requestParams = new HashMap<>();
-		// 处理get请求
+		// 处理get请求,get请求一般用于获取、查询资源
 		if (req.method() == HttpMethod.GET) {
-			QueryStringDecoder decoder = new QueryStringDecoder(uri);
-			Map<String, List<String>> parame = decoder.parameters();
-			Iterator<Entry<String, List<String>>> iterator = parame.entrySet().iterator();
-			while (iterator.hasNext()) {
-				Entry<String, List<String>> next = iterator.next();
+			QueryStringDecoder decoder = new QueryStringDecoder(uri);//
+			Map<String, List<String>> parame = decoder.parameters();//解析参数
+			Iterator<Entry<String, List<String>>> iterator = parame.entrySet().iterator();//iterator是迭代器
+			while (iterator.hasNext()) {//使用hasNext()检查序列中是否还有元素
+				Entry<String, List<String>> next = iterator.next();//使用next()获得序列中的下一个元素
 				requestParams.put(next.getKey(), next.getValue().get(0));
 			}
 		}
-		// 处理POST请求
+		// 处理POST请求,post请求一般用于更新资源信息
 		if (req.method() == HttpMethod.POST) {
 			HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(new DefaultHttpDataFactory(false), req);
 			List<InterfaceHttpData> postData = decoder.getBodyHttpDatas(); //

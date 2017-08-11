@@ -11,4 +11,6 @@ public class FaviconControllerImpl implements IController{
 	public FullHttpResponse doCtr(Map<String, String> params) {
 		return ResponseUtil.responseOK("Ok");
 	}
+
+
 }

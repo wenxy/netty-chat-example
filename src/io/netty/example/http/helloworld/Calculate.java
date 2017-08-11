@@ -73,7 +73,7 @@ public class Calculate {
 		Map root = new HashMap();
 		Template temp = cfg.getTemplate("index.html","UTF-8");
 		AdditionDto dto = new AdditionDto();
-		dto.setDesc("测试");
+		dto.setDesc("测试");//???
 		dto.setResult(100);
 		
 		root.put("dto",dto);

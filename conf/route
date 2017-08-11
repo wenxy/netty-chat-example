@@ -1,3 +1,6 @@
 GET /				io.netty.example.http.controller.IndexControllerImpl
 GET	/favicon.ico	io.netty.example.http.controller.FaviconControllerImpl
 *	/add			io.netty.example.http.controller.AdditionControllerImpl
+*   /subtract       io.netty.example.http.controller.SubtractionControllerImpl
+*   /multiple       io.netty.example.http.controller.MultiplicationControllerImpl
+*   /divide         io.netty.example.http.controller.DivisionControllerImpl

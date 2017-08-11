@@ -8,8 +8,8 @@
   <select id="operator" style="width:80px;">
   	  <option value ="0">+</option>
 	  <option value ="1">-</option>
-	  <option value="2">*</option>
-	  <option value="3">/</option>
+	  <option value ="2">*</option>
+	  <option value ="3">/</option>
   </select>
   <input id="secNumber" type="text" style="width:150px;"  placeholder="请输入数字"/>
   <input id="cal" onclick="cal()" type="button" style="width:100px;" value="计算" />
@@ -22,6 +22,15 @@
   		if( operator == 0){
   			getResultUrl = '/add?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}
+  		if( operator == 1){
+  			getResultUrl = '/subtract?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  		}
+  		if( operator == 2){
+  			getResultUrl = '/multiple?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  		}
+  		  		if( operator == 3){
+  			getResultUrl = '/divide?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  		}  		
   		if(getResultUrl){
   			window.location.href=getResultUrl;
   		}else{
