@@ -20,12 +20,21 @@ import io.netty.example.http.response.ResponseUtil;
 import io.netty.example.http.route.Route;
 import io.netty.example.http.route.RouteInfo;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.multipart.Attribute;
 import io.netty.handler.codec.http.multipart.DefaultHttpDataFactory;
+import io.netty.handler.codec.http.multipart.FileUpload;
+import io.netty.handler.codec.http.multipart.HttpData;
+import io.netty.handler.codec.http.multipart.HttpDataFactory;
 import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
+import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder.EndOfDataDecoderException;
+import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder.ErrorDataDecoderException;
 import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import io.netty.handler.codec.http.multipart.InterfaceHttpData.HttpDataType;
 import io.netty.handler.codec.http.multipart.MemoryAttribute;
@@ -64,118 +73,226 @@ public class HttpHelloWorldServerHandler extends ChannelInboundHandlerAdapter {
 	private static final AsciiString CONNECTION = new AsciiString("Connection");
 	private static final AsciiString KEEP_ALIVE = new AsciiString("keep-alive");
 
+	private Map<String, String> requestParams = new HashMap<>();
+	private HttpPostRequestDecoder decoder;
+	private boolean readingChunks;
+	private boolean keepAlive;
+	private HttpData partialContent;
+	private HttpRequest req;
+	private RouteInfo routeInfo;
+	private String method;
+	private FullHttpResponse response = null;
+	private boolean isGet;
+	private boolean isPost;
+	private HttpMethod httpMethod;
+
+	private static final HttpDataFactory factory = new DefaultHttpDataFactory(DefaultHttpDataFactory.MINSIZE); // Disk
+																												// if
+																												// size
+																												// exceed
+
 	@Override
 	public void channelReadComplete(ChannelHandlerContext ctx) {
 		ctx.flush();
 	}
 
+	/**
+	 * uri /a/b/c/d
+	 * 
+	 * @param uri
+	 * @throws Exception 
+	 */
+	private void setRouteInfo(String uri) throws Exception {
+		// 获取路由信息
+		QueryStringDecoder pathDecoder = new QueryStringDecoder(req.uri());// 处理URI
+																			// 获取path路径
+		String path = pathDecoder.path();
+		
+		//处理favicon.ico
+		if( path.equals("/favicon.ico") ){
+			routeInfo = Route.getInstance().getByUri(path);
+			method = null;
+			return ;
+		}
+			 
+		String[] paths = path.split("\\.");
+		if( paths.length > 2 ){
+			throw new Exception("错误的请求路径");
+		}
+		
+		if( paths.length == 1 ){
+			routeInfo = Route.getInstance().getByUri(paths[0]);
+			method = null;
+			return ;
+		}
+		
+		if( paths.length == 2 ){
+			routeInfo = Route.getInstance().getByUri(paths[0]);
+			method = paths[1];
+		} 
+	}
+
 	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) throws NoSuchMethodException, SecurityException, IllegalArgumentException, InvocationTargetException {
+	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+		
 		if (msg instanceof HttpRequest) {
-			
-			HttpRequest req = (HttpRequest) msg;			
-			//获取URL参数
-			Map<String, String> params = requestParams(req);
-			
-			//处理URI 获取path路径
-			QueryStringDecoder decoder = new QueryStringDecoder(req.uri());
-			String path = decoder.path();
-			
-			//获取路由信息
-			String realPath = getpath(path);
-			RouteInfo ri = Route.getInstance().getByUri(realPath);
-			
-			FullHttpResponse response = null; 
-			//处理路由
-			if( ri == null ){
-				response = ResponseUtil.responseServerError("路由不存在"); 
-			}else if( !ri.getMethod().equalsIgnoreCase(req.method().name())  && !ri.getMethod().equals("*")){
-				response = ResponseUtil.responseServerError("不支持Method："+req.method().name()); 
-			}else{//处理正常业务
+			req = (HttpRequest) msg;
+			keepAlive = HttpUtil.isKeepAlive(req);
+
+			// 获取URL参数
+			setParams(req.uri());
+			setRouteInfo(req.uri());
+
+			httpMethod = req.method();
+
+			if (httpMethod.equals(HttpMethod.POST)) {
+				isPost = true;
 				try {
-					//为什么这么做呢？ 解耦业务
-					/*Class<?> CalculateController = Class.forName("io.netty.example.http.controller");
-					
-			        Method method = CalculateController.getMethod("AdoCtr");
-			        response = (FullHttpResponse) method.invoke(CalculateController.newInstance());*/
-			       // response = clazz.AdoCtr(params);
-					
-					IController ctr = (IController)(Class.forName(ri.getClz()).newInstance());
-					String method = getMethod(path);
-					if( null == method ){
-						response = ctr.doCtr(params);
-					}else{
-						response = ctr.doCtr(params, method);
+					decoder = new HttpPostRequestDecoder(factory, req);
+					readingChunks = HttpUtil.isTransferEncodingChunked(req);
+					if (readingChunks) {
+						readingChunks = true;
 					}
-				} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-					response = ResponseUtil.responseServerError("未找到路由实现"); 
+				} catch (ErrorDataDecoderException e1) {
+					response = ResponseUtil.responseServerError("路由不存在");
 				}
+			} else if (httpMethod.equals(HttpMethod.GET)) {
+				// GET请求不处理postRequestDecoder
+				isGet = true;
+				dobusiness(ctx);
 			}
-  
-			boolean keepAlive = HttpUtil.isKeepAlive(req); 
-			if (!keepAlive) {
-				ctx.write(response).addListener(ChannelFutureListener.CLOSE);
-			} else {
-				response.headers().set(CONNECTION, KEEP_ALIVE);
-				ctx.write(response);
+
+		}
+		// Post
+		if (isPost && decoder != null && msg instanceof HttpContent) {
+			HttpContent chunk = (HttpContent) msg;
+			try {
+				decoder.offer(chunk);
+			} catch (ErrorDataDecoderException e1) {
+				throw e1;
 			}
+			readHttpDataChunkByChunk();
+			if (chunk instanceof LastHttpContent) {
+				readingChunks = false;
+				reset();
+				dobusiness(ctx);
+			}
+		}
+
+		if (!isGet && !isPost) {
+			ctx.write(ResponseUtil.response(HttpResponseStatus.FORBIDDEN, "Not support method " + httpMethod));
+			ctx.close();
 		}
 	}
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
 		cause.printStackTrace();
+		ctx.write(ResponseUtil.responseServerError("服务器异常:" + cause.getMessage()));
 		ctx.close();
 	}
-	
-	private Map<String, String> requestParams(HttpRequest req){//请求参数
-		String uri = req.uri();
-		Map<String, String> requestParams = new HashMap<>();
-		// 处理get请求,get请求一般用于获取、查询资源
-		if (req.method() == HttpMethod.GET) {
-			QueryStringDecoder decoder = new QueryStringDecoder(uri);//
-			Map<String, List<String>> parame = decoder.parameters();//解析参数
-			Iterator<Entry<String, List<String>>> iterator = parame.entrySet().iterator();//iterator是迭代器
-			while (iterator.hasNext()) {//使用hasNext()检查序列中是否还有元素
-				Entry<String, List<String>> next = iterator.next();//使用next()获得序列中的下一个元素
-				requestParams.put(next.getKey(), next.getValue().get(0));
-			}
+
+	private Map<String, String> setParams(String uri) {// 请求参数
+		QueryStringDecoder decoder = new QueryStringDecoder(uri);//
+		Map<String, List<String>> parame = decoder.parameters();// 解析参数
+		Iterator<Entry<String, List<String>>> iterator = parame.entrySet().iterator();// iterator是迭代器
+		while (iterator.hasNext()) {// 使用hasNext()检查序列中是否还有元素
+			Entry<String, List<String>> next = iterator.next();// 使用next()获得序列中的下一个元素
+			requestParams.put(next.getKey(), next.getValue().get(0));
 		}
-		// 处理POST请求,post请求一般用于更新资源信息
-		if (req.method() == HttpMethod.POST) {
-			HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(new DefaultHttpDataFactory(false), req);
-			List<InterfaceHttpData> postData = decoder.getBodyHttpDatas(); //
-			for (InterfaceHttpData data : postData) {
-				if (data.getHttpDataType() == HttpDataType.Attribute) {
-					MemoryAttribute attribute = (MemoryAttribute) data;
-					requestParams.put(attribute.getName(), attribute.getValue());
+		return requestParams;
+	} 
+	private void readHttpDataChunkByChunk() throws IOException {
+		try {
+			while (decoder.hasNext()) {
+				InterfaceHttpData data = decoder.next();
+				if (data != null) {
+					if (partialContent == data) {
+						partialContent = null;
+					}
+					try {
+						writeHttpData(data);
+					} finally {
+						data.release();
+					}
 				}
 			}
-		} 
-		return requestParams;
+		} catch (EndOfDataDecoderException e1) {
+			throw e1;
+		}
 	}
-	
-	private String getMethod(String path){
-		if( path == null || path.length() == 0 ){
-			return null;
+
+	private void writeHttpData(InterfaceHttpData data) throws IOException {
+		if (data.getHttpDataType() == HttpDataType.Attribute) {
+			Attribute attribute = (Attribute) data;
+			String value;
+			try {
+				value = attribute.getValue();
+			} catch (IOException e1) {
+				// Error while reading data from File, only print name and error
+				e1.printStackTrace();
+				throw e1;
+			}
+			requestParams.put(attribute.getName(), value);
+			System.out.println(requestParams);
+		} else {
+			if (data.getHttpDataType() == HttpDataType.FileUpload) {
+				FileUpload fileUpload = (FileUpload) data;
+				if (fileUpload.isCompleted()) {
+					if (fileUpload.length() < 10000) {
+
+					} else {
+
+					}
+					fileUpload.isInMemory();// tells if the file is in Memory
+					// or on File
+					/*
+					 * try { fileUpload.renameTo(new File("D:/test.png")); }
+					 * catch (IOException e) { // TODO Auto-generated catch
+					 * block e.printStackTrace(); }
+					 */
+					// enable to move into another
+					// File dest
+					// decoder.removeFileUploadFromClean(fileUpload);
+					// //remove
+					// the File of to delete file
+				}
+			}
 		}
-		
-		int index = path.indexOf("@");
-		if( index == -1 ){
-			return null;
-		}
-		
-		return path.substring(index+1);
 	}
-	
-	private String getpath(String path){
-		if( path == null || path.length() == 0 ){
-			return null;
+
+	private void dobusiness(ChannelHandlerContext ctx) {
+		// dobusiness
+		// 处理路由
+		if (routeInfo == null) {
+			response = ResponseUtil.responseServerError("路由不存在");
+		} else if (!routeInfo.getMethod().equalsIgnoreCase(req.method().name()) && !routeInfo.getMethod().equals("*")) {
+			response = ResponseUtil.responseServerError("不支持Method：" + req.method().name());
+		} else {// 处理正常业务
+			try {
+				IController ctr = (IController) (Class.forName(routeInfo.getClz()).newInstance());
+				if (null == method) {
+					response = ctr.doCtr(requestParams);
+				} else {
+					response = ctr.doCtr(requestParams, method);
+				}
+			} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+				response = ResponseUtil.responseServerError("未找到路由实现");
+			}
 		}
-		int index = path.indexOf("@");
-		if( index == -1 ){
-			return path;
+
+		if (!keepAlive) {
+			ctx.write(response).addListener(ChannelFutureListener.CLOSE);
+		} else {
+			response.headers().set(CONNECTION, KEEP_ALIVE);
+			ctx.write(response);
 		}
-		return path.substring(0,index);
 	}
+
+	private void reset() {
+		// destroy the decoder to release all resources
+		decoder.destroy();
+		decoder = null;
+	}
+
 }

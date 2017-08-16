@@ -9,6 +9,7 @@ public class FaviconControllerImpl  extends AbstractController{
 
 	@Override
 	public FullHttpResponse doCtr(Map<String, String> params) {
+		
 		return ResponseUtil.responseOK("Ok");
 	}
 

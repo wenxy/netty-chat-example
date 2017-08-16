@@ -61,5 +61,6 @@ public class ResponseUtil {
 	
 	public static FullHttpResponse responseServerError(byte[]  message){ 
 		return response(INTERNAL_SERVER_ERROR,message);
-	} 
+	}  
+	 
 }
