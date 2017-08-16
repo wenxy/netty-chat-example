@@ -9,7 +9,7 @@ import io.netty.handler.codec.http.FullHttpResponse;
 public class IndexControllerImpl  extends AbstractController{
 
 	@Override
-	public FullHttpResponse doCtr(Map<String, String> params) {
+	public FullHttpResponse doCtr(Map<String, Object> params) {
 		//渲染模板
 		try {
 			FreeMarker fm = new FreeMarker();

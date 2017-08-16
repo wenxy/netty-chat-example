@@ -26,7 +26,8 @@ public class HttpHelloWorldServerInitializer extends ChannelInitializer<SocketCh
         p.addLast(new HttpServerCodec());
         p.addLast(new HttpServerExpectContinueHandler());
         p.addLast(new HttpHelloWorldServerHandler());
-       // p.addLast(new HttpRequestDecoder()); 
+        //p.addLast(new HttpUploadServerHandler());
+        // p.addLast(new HttpRequestDecoder()); 
        // p.addLast(new HttpResponseEncoder());
         
     }

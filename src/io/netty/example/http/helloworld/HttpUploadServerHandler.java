@@ -66,6 +66,7 @@ import io.netty.util.CharsetUtil;
 
 public class HttpUploadServerHandler extends SimpleChannelInboundHandler<HttpObject> {
 
+
     private static final Logger logger = Logger.getLogger(HttpUploadServerHandler.class.getName());
 
     private HttpRequest request;
@@ -82,10 +83,14 @@ public class HttpUploadServerHandler extends SimpleChannelInboundHandler<HttpObj
     private HttpPostRequestDecoder decoder;
 
     static {
-        DiskFileUpload.deleteOnExitTemporaryFile = true; // should delete file
+        DiskFileUpload.deleteOnExitTemporaryFile = false; // should delete file
                                                          // on exit (in normal
                                                          // exit)
-        DiskFileUpload.baseDirectory = null; // system temp directory
+        DiskFileUpload.baseDirectory = System.getProperty("user.dir")+"/tmp"; // system temp directory
+         
+    	DiskAttribute.deleteOnExitTemporaryFile = false; // should delete file on
+                                                        // exit (in normal exit)
+        DiskAttribute.baseDirectory = System.getProperty("user.dir")+"/tmp"; // system temp directory
     }
 
     @Override
@@ -99,7 +104,39 @@ public class HttpUploadServerHandler extends SimpleChannelInboundHandler<HttpObj
     public void channelRead0(ChannelHandlerContext ctx, HttpObject msg) throws Exception {
         if (msg instanceof HttpRequest) {
             HttpRequest request = this.request = (HttpRequest) msg;
-             
+            URI uri = new URI(request.uri());
+            if (!uri.getPath().startsWith("/form")) {
+                // Write Menu
+                writeMenu(ctx);
+                return;
+            }
+            responseContent.setLength(0);
+            responseContent.append("WELCOME TO THE WILD WILD WEB SERVER\r\n");
+            responseContent.append("===================================\r\n");
+
+            responseContent.append("VERSION: " + request.protocolVersion().text() + "\r\n");
+
+            responseContent.append("REQUEST_URI: " + request.uri() + "\r\n\r\n");
+            responseContent.append("\r\n\r\n");
+
+            // new getMethod
+            for (Entry<String, String> entry : request.headers()) {
+                responseContent.append("HEADER: " + entry.getKey() + '=' + entry.getValue() + "\r\n");
+            }
+            responseContent.append("\r\n\r\n");
+
+            // new getMethod
+            Set<Cookie> cookies;
+            String value = request.headers().get(HttpHeaderNames.COOKIE);
+            if (value == null) {
+                cookies = Collections.emptySet();
+            } else {
+                cookies = ServerCookieDecoder.STRICT.decode(value);
+            }
+            for (Cookie cookie : cookies) {
+                responseContent.append("COOKIE: " + cookie + "\r\n");
+            }
+            responseContent.append("\r\n\r\n");
 
             QueryStringDecoder decoderQuery = new QueryStringDecoder(request.uri());
             Map<String, List<String>> uriAttributes = decoderQuery.parameters();
@@ -250,8 +287,11 @@ public class HttpUploadServerHandler extends SimpleChannelInboundHandler<HttpObj
                         + attribute + "\r\n");
             }
         } else {
+        	 
             responseContent.append("\r\nBODY FileUpload: " + data.getHttpDataType().name() + ": " + data
                     + "\r\n");
+            
+            responseContent.append("\r\nBODY data: " +data.getName()+"\r\n");
             if (data.getHttpDataType() == HttpDataType.FileUpload) {
                 FileUpload fileUpload = (FileUpload) data;
                 if (fileUpload.isCompleted()) {
@@ -267,14 +307,14 @@ public class HttpUploadServerHandler extends SimpleChannelInboundHandler<HttpObj
                     } else {
                         responseContent.append("\tFile too long to be printed out:" + fileUpload.length() + "\r\n");
                     }
-                    fileUpload.isInMemory();// tells if the file is in Memory
+                    // fileUpload.isInMemory();// tells if the file is in Memory
                     // or on File
-                    try {
-						fileUpload.renameTo(new File("D:/test.png"));
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
+                    /*try {
+						fileUpload.renameTo(new File("D:/tmp/"+fileUpload.getFilename()));
+					} catch (IOException e) { 
 						e.printStackTrace();
-					} // enable to move into another
+					}*/ 
+                    // enable to move into another
                     // File dest
                     // decoder.removeFileUploadFromClean(fileUpload); //remove
                     // the File of to delete file
@@ -389,7 +429,10 @@ public class HttpUploadServerHandler extends SimpleChannelInboundHandler<HttpObj
         responseContent.append("<tr><td>Fill with value: <br> <input type=text name=\"secondinfo\" size=20>");
         responseContent
                 .append("<tr><td>Fill with value: <br> <textarea name=\"thirdinfo\" cols=40 rows=10></textarea>");
-        responseContent.append("<tr><td>Fill with file: <br> <input type=file name=\"myfile\">");
+        responseContent.append("<tr><td>Fill with file: <br> <input type=file name=\"myfile1\">");
+        responseContent.append("</td></tr>");
+        
+        responseContent.append("<tr><td>Fill with file: <br> <input type=file name=\"myfile2\">");
         responseContent.append("</td></tr>");
         responseContent.append("<tr><td><INPUT TYPE=\"submit\" NAME=\"Send\" VALUE=\"Send\"></INPUT></td>");
         responseContent.append("<td><INPUT TYPE=\"reset\" NAME=\"Clear\" VALUE=\"Clear\" ></INPUT></td></tr>");

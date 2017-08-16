@@ -10,7 +10,7 @@ import io.netty.handler.codec.http.FullHttpResponse;
 public  class MultiplicationControllerImpl  extends AbstractController{
 
 	@Override
-	public FullHttpResponse doCtr(Map<String, String> params) {
+	public FullHttpResponse doCtr(Map<String, Object> params) {
 		
 		if( !params.containsKey("firstNumber") || !params.containsKey("secNumber") ){
 			return ResponseUtil.responseServerError("参数错误");
@@ -20,8 +20,8 @@ public  class MultiplicationControllerImpl  extends AbstractController{
 			SubtractionDto dto = new SubtractionDto();
 			
 			//处理业务逻辑，或者更复杂的逻辑
-			double firstNumber = Double.parseDouble(params.get("firstNumber"));
-			double secNumber =  Double.parseDouble(params.get("secNumber"));
+			double firstNumber = Double.parseDouble(params.get("firstNumber").toString());
+			double secNumber =  Double.parseDouble(params.get("secNumber").toString());
 			dto.setResult(firstNumber * secNumber);
 			dto.setDesc("计算结果:"+firstNumber +"*"+secNumber+"=");
 			

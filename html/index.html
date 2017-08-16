@@ -13,6 +13,18 @@
   </select>
   <input id="secNumber" type="text" style="width:150px;"  placeholder="请输入数字"/>
   <input id="cal" onclick="cal()" type="button" style="width:100px;" value="计算" />
+   </br></br>
+  ===========上传文件测试===================
+  </br></br>
+  <form ACTION="/cal.uploadFile" enctype="multipart/form-data" method="POST"> 
+  	 <input type=file name="myfile1"></br>
+  	 <input type=file name="myfile2"></br>
+  	 
+  	 
+  	 <input type="submit"></input> &nbsp;&nbsp;&nbsp;&nbsp;<input type="reset" name="clear" value="clear" ></input></br>
+  	
+  </form>
+  
   <script>
   	function cal(){
   		var getResultUrl;
@@ -20,16 +32,16 @@
   		var secNumber = document.getElementById("secNumber").value;
   		var operator = document.getElementById("operator").value;
   		if( operator == 0){
-  			getResultUrl = '/cal@add?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  			getResultUrl = '/cal.add?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}
   		if( operator == 1){
-  			getResultUrl = '/cal@subtract?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  			getResultUrl = '/cal.subtract?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}
   		if( operator == 2){
-  			getResultUrl = '/cal@multiple?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  			getResultUrl = '/cal.multiple?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}
   		  		if( operator == 3){
-  			getResultUrl = '/cal@divide?firstNumber='+firstNumber+'&secNumber='+secNumber;
+  			getResultUrl = '/cal.divide?firstNumber='+firstNumber+'&secNumber='+secNumber;
   		}  		
   		if(getResultUrl){
   			window.location.href=getResultUrl;
